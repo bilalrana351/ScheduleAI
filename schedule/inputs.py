@@ -1,4 +1,5 @@
 import datetime
+from scheduler import minutes_between
 
 def get_time(prompt):
     while True:
@@ -21,7 +22,9 @@ def get_obligations():
         if end_time <= start_time:
             print("End time must be after start time. Please re-enter this obligation.")
             continue
-        obligations.append({"task": task, "start": start_time, "end": end_time})
+        # Added a duration just to have more information, nothing wrong in the code
+        # We just use the minutes_between function to calculate the duration
+        obligations.append({"task": task, "start": start_time, "end": end_time, "duration": minutes_between(start_time, end_time)})
     return obligations
 
 def get_regular_tasks():

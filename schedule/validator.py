@@ -5,7 +5,8 @@ def validate_time_range(wake_up, sleep, obligations, tasks):
         if obligation["start"] < wake_up or obligation["end"] > sleep:
             errors.append(f"Obligation '{obligation['task']}' is out of bounds.")
     for task in tasks:
-        if task["duration"] > (sleep.hour * 60 + sleep.minute) - (wake_up.hour * 60 + wake_up.minute):
+        available_time = (sleep.hour * 60 + sleep.minute) - (wake_up.hour * 60 + wake_up.minute)
+        if task["duration"] > available_time:
             errors.append(f"Task '{task['task']}' cannot fit within the available time window.")
     return errors
 
@@ -28,6 +29,14 @@ def validate_inputs(data):
     errors = validate_time_range(wake_up, sleep, obligations, tasks)
     errors.extend(check_overlaps(obligations))
 
+    # I have converted the return to a dictionary to return both the validity and the errors
+    # This is to make the function return signature easier for us to understand
     if not errors:
-        return True, None
-    return False, errors
+        return {
+            "valid": True,
+            "errors": None
+        }
+    return {
+        "valid": False,
+        "errors": errors
+    }

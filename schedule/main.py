@@ -9,10 +9,10 @@ def main():
         print("Invalid inputs. Please restart the program.")
         return
 
-    valid, errors = validate_inputs(schedule_data)
-    if not valid:
+    validation_result = validate_inputs(schedule_data)
+    if not validation_result["valid"]:
         print("Errors found in your schedule:")
-        for error in errors:
+        for error in validation_result["errors"]:
             print(f"- {error}")
         return
 
