@@ -1,0 +1,12 @@
+[
+    "I want to {action} for {digit} {duration} this {preference}.",
+    "I plan to {action} for {digit} {duration} in the {preference}.",
+    "I would like to {action} for {digit} {duration} this {preference}.",
+    "My goal is to {action} for {digit} {duration} this {preference}.",
+    "My preference is to {action} for {digit} {duration} this {preference}.",
+    "I aim to {action} for {digit} {duration} this {preference}.",
+    "I need to {action} for {digit} {duration} this {preference}.",
+    "My objective is to {action} for {digit} {duration} this {preference}.",
+    "I must {action} for {digit} {duration} this {preference}.",
+    "I wish to {action} for {digit} {duration} this {preference}."
+]
