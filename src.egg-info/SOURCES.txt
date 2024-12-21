@@ -13,6 +13,7 @@ src/hmms/training/__init__.py
 src/hmms/training/get_training_data_code.py
 src/hmms/training/get_training_data_llm.py
 src/hmms/training/templates.py
+src/hmms/training/train_hmm.py
 src/schedule/__init__.py
 src/schedule/inputs.py
 src/schedule/main.py

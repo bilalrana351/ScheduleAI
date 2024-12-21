@@ -10,3 +10,4 @@ Requires-Dist: wget
 Requires-Dist: langchain
 Requires-Dist: langchain-openai
 Requires-Dist: num2words
+Requires-Dist: word2number

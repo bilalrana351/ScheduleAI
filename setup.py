@@ -13,6 +13,7 @@ setup(
         'wget',
         'langchain',
         'langchain-openai',
-        'num2words'
+        'num2words',
+        'word2number'
     ]
-) 
+)
