@@ -110,7 +110,7 @@ def get_time_converted_sentence(sentence: str, time: str) -> str:
     converted_words = []
     for word in words:
         if word in time_lower_words:
-            converted_words.append("<TIME>")
+            converted_words.append("<time>")
         else:
             converted_words.append(word)
     
@@ -140,6 +140,14 @@ def preprocess_inference_sentence(sentence: str) -> str:
     # Convert the whole sentence to lowercase
     sentence = sentence.lower()
 
+    stripped_sentence = ''
+
+    for char in sentence:
+        if char.isalpha() or char.isdigit() or char == " ":
+            stripped_sentence += char
+
+    sentence = stripped_sentence
+
     # Remove all dots and commas from the sentence
     sentence = sentence.replace(".", "").replace(",", "")
 
@@ -152,6 +160,14 @@ def preprocess_sentence(sentence: str, action: str, duration: str, preference: s
 
     # Convert the whole sentence to lowercase
     sentence = sentence.lower()
+
+    stripped_sentence = ''
+
+    for char in sentence:
+        if char.isalpha() or char.isdigit() or char == " ":
+            stripped_sentence += char
+
+    sentence = stripped_sentence
 
     # Remove all dots and commas from the sentence
     sentence = sentence.replace(".", "").replace(",", "")
@@ -363,7 +379,7 @@ def load_matrices(run_number: Optional[int] = None) -> Tuple[torch.Tensor, torch
     emission_matrix = torch.tensor(emission_data, dtype=torch.float32)
     state_priors = torch.tensor(state_priors_data, dtype=torch.float32)
     
-    return transition_matrix.transpose(0,1), emission_matrix.transpose(0,1), state_priors
+    return transition_matrix, emission_matrix, state_priors
 
 def load_indexes() -> Tuple[Dict[str, int], Dict[str, int], Dict[int, str], Dict[int, str]]:
     """

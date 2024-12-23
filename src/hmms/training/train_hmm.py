@@ -9,7 +9,7 @@ from src.core.helpers import (
 import torch
 from typing import Tuple
 
-def train_hmm() -> Tuple[torch.Tensor, torch.Tensor]:
+def train_hmm(na_normalizing_alpha: int = 0.05) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Train an HMM model using the training data.
     
@@ -40,7 +40,15 @@ def train_hmm() -> Tuple[torch.Tensor, torch.Tensor]:
         # Populate the emission matrix
         for i in range(len(sentence_indexes)):
             emission_matrix[sentence_indexes[i]][state_sequence_indexes[i]] += 1
-        
+
+    # Take the sum of the emission matrix along the columns, will be used for estimating the NA State 
+    emission_matrix_sum = torch.sum(emission_matrix, dim=0)
+
+    # At the end, we know that the last index is the NA state, we assign its emission matrices values as follows:
+    # We assign the emission matrix values according to the most likely states
+    emission_matrix[emission_matrix.shape[0] - 1] = emission_matrix_sum * na_normalizing_alpha # JUst so that it does not effect the values that much
+
+
     # # Normalize the matrices
     transition_matrix, emission_matrix = normalize_matrices(transition_matrix, emission_matrix)
 
@@ -56,7 +64,7 @@ def train_hmm() -> Tuple[torch.Tensor, torch.Tensor]:
     save_dir = save_matrices(transition_matrix, emission_matrix)
     print(f"Matrices saved in: {save_dir}")
 
-    return transition_matrix.transpose(0, 1), emission_matrix.transpose(0, 1)
+    return transition_matrix, emission_matrix
 
 if __name__ == "__main__":
-    transition_matrix, emission_matrix = train_hmm()
+    transition_matrix, emission_matrix = train_hmm(na_normalizing_alpha=0.05)

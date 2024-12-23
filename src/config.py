@@ -53,11 +53,11 @@ PREFERENCES = json.load(open(os.path.join(TRAINING_DATA_FOLDER_PATH, "preference
 SENTENCES = json.load(open(os.path.join(TRAINING_DATA_FOLDER_PATH, "sentences.json")))
 
 STATES = {
+    "other": "O",
     "action": "A",
     "duration": "D",
     "preference": "P",
-    "time": "T",
-    "other": "O"
+    "time": "T"
 }
 
 UNKNOWN_WORD = "NA"
