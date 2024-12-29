@@ -14,6 +14,7 @@ setup(
         'langchain',
         'langchain-openai',
         'num2words',
-        'word2number'
+        'word2number',
+        'flask'
     ]
 )

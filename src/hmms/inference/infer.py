@@ -27,7 +27,8 @@ def infer(sentence: str) -> str:
 if __name__ == "__main__":
     sentence = """The time for playing hockey should be ten hours, 
     then I would love to play some cricket for ten hours. 
-    then I would be done for the day."""
+    then I would be done for the day.
+    some coffee too in the evening and in the morning."""
 
     sentences = sentence.split("\n")
 
