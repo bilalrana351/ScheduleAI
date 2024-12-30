@@ -116,42 +116,72 @@ def get_time_converted_sentence(sentence: str, time: str) -> str:
     
     return " ".join(converted_words)
 
-def find_and_replace_time(sentence: str) -> str:
-    # Create number word mappings including both space-separated and hyphenated versions
+def find_and_replace_time(sentence: str, get_placeholder: bool = True) -> str:
     words = sentence.split()
-
     result = []
-
-    for word in words:
-        if word.isdigit():
-            result.append("<time>")        
-        else:
-            # Try to convert the word to a number
+    i = 0
+    
+    while i < len(words):
+        # Try to identify compound numbers by checking if both words are valid numbers
+        if i < len(words) - 1:
             try:
-                number = w2n.word_to_num(word.lower())
-
-                result.append("<time>")
+                # Check if both words can be converted to numbers individually
+                first_num = w2n.word_to_num(words[i].lower())
+                second_num = w2n.word_to_num(words[i+1].lower())
+                
+                # If both are valid numbers, try combining them
+                compound_number = "-".join(words[i:i+2])
+                number = w2n.word_to_num(compound_number.lower())
+                
+                if get_placeholder:
+                    result.append("<time>")
+                else:
+                    result.append(str(number))
+                i += 2  # Skip next word since we used it
+                continue
             except:
-                result.append(word)
+                pass
+        
+        # If compound number failed, process single word
+        if words[i].isdigit():
+            if get_placeholder:
+                result.append("<time>")
+            else:
+                result.append(words[i])
+        else:
+            try:
+                number = w2n.word_to_num(words[i].lower())
+                if get_placeholder:
+                    result.append("<time>")
+                else:
+                    result.append(str(number))
+            except:
+                result.append(words[i])
+        i += 1
 
     return " ".join(result)
+
+def remove_special_characters(sentence: str, omitted_characters: List[str] = []) -> str:
+    stripped_sentence = ''
+    for char in sentence:
+        if char.isalpha() or char.isdigit() or char == " ":
+            stripped_sentence += char
+        if char in omitted_characters:
+            stripped_sentence += char
+    return stripped_sentence
 
 def preprocess_inference_sentence(sentence: str) -> str:
     # Convert the whole sentence to lowercase
     sentence = sentence.lower()
 
-    stripped_sentence = ''
-
-    for char in sentence:
-        if char.isalpha() or char.isdigit() or char == " ":
-            stripped_sentence += char
-
-    sentence = stripped_sentence
+    sentence = remove_special_characters(sentence, omitted_characters=["-"])
 
     # Remove all dots and commas from the sentence
     sentence = sentence.replace(".", "").replace(",", "")
 
-    sentence = find_and_replace_time(sentence)
+    sentence = find_and_replace_time(sentence, get_placeholder=True)
+
+    sentence = remove_special_characters(sentence, omitted_characters=["<", ">"])
 
     return sentence
 
@@ -427,6 +457,24 @@ def get_model(run_number: Optional[int] = None) -> Model:
 
 
     return Model(transition_matrix, emission_matrix, word_index_dict, state_index_dict, reverse_word_index, reverse_state_index, state_priors)
+
+
+def replace_time_with_number(result: Dict[str, List[str]], sentence: str, get_placeholder=False) -> Dict[str, List[str]]:
+    # Convert any number words to their corresponding number
+    sentence = find_and_replace_time(sentence, get_placeholder=get_placeholder)
+
+    # Replace the special characters in the original sentence
+    sentence = remove_special_characters(sentence)
+
+    # Get the words
+    words = sentence.split()
+
+    for index, word in enumerate(words):
+        if word.isdigit():
+            # If the word is a digit
+            result['state_sequence_with_words'][index][1] = word
+
+    return result
 
 if __name__ == "__main__":
     pass

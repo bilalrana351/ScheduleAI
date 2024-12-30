@@ -17,6 +17,7 @@ setup(
         'word2number',
         'flask',
         'pytest',
-        'requests'
+        'requests',
+        'flask-cors'
     ]
 )

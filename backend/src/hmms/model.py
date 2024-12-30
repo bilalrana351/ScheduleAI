@@ -86,7 +86,8 @@ class Model:
         
 
         # Zip the state sequence and word indices
-        state_sequence_with_words = list(zip(state_sequence, words))
+        # Convert from tuple to list of lists
+        state_sequence_with_words = [list(item) for item in zip(state_sequence, words)]
 
         return {
             "state_sequence": state_sequence,

@@ -14,3 +14,4 @@ Requires-Dist: word2number
 Requires-Dist: flask
 Requires-Dist: pytest
 Requires-Dist: requests
+Requires-Dist: flask-cors

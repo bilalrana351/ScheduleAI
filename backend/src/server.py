@@ -5,11 +5,80 @@ from src.schedulers.backtracking import backtracking_slot_placement
 from src.schedulers.greedy_scheduler import fit_tasks_into_schedule
 from datetime import datetime
 from config import DEV
+from src.hmms.inference.infer import infer
+from flask_cors import CORS
+
 app = Flask(__name__)
+# Updated CORS configuration
+CORS(app, 
+     resources={
+         r"/*": {
+             "origins": ["http://localhost:3000"],
+             "methods": ["GET", "POST", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"],
+             "supports_credentials": True  # Add this line
+         }
+     })
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 @app.route('/')
 def index():
     return "Hello, World!"
+
+@app.route('/infer', methods=['POST'])
+def process_natural_language():
+    try:
+        data = request.json
+        if 'text' not in data:
+            return jsonify({'error': 'Missing text field'}), 400
+
+        # Get the natural language text
+        text = data['text']
+        
+        # Process using HMM model
+        result = infer(text)
+        
+        # Extract relevant information
+        task_info = {
+            'task_name': '',
+            'duration': '',
+            'time_of_day': '',
+            'duration_unit': ''
+        }
+        
+        # Process the state sequence to extract information
+        current_activity = []
+        for state, word in result['state_sequence_with_words']:
+            if state == 'A':  # Activity name
+                current_activity.append(word)
+            elif state == 'T':  # Time value
+                task_info['duration'] = word
+            elif state == 'D':  # Duration unit
+                task_info['duration_unit'] = word
+            elif state == 'P':  # Time period
+                task_info['time_of_day'] = word
+        
+        # Join activity words to form task name
+        task_info['task_name'] = ' '.join(current_activity).strip()
+
+        print("DATA")
+        
+        return jsonify({
+            'parsed_info': task_info,
+            'raw_inference': result
+        })
+        
+    except Exception as e:
+        if DEV:
+            raise e
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/schedule/<algo>', methods=['POST'])
 def schedule(algo):

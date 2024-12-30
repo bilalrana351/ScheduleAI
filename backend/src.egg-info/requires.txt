@@ -11,3 +11,4 @@ word2number
 flask
 pytest
 requests
+flask-cors
