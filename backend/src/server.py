@@ -127,17 +127,26 @@ def schedule(algo):
                 raise ValueError(f"Invalid algorithm: {algo}")
             else:
                 return jsonify({'error': f'Invalid algorithm: {algo}'}), 400
-            
-        preference_respected = result['preference_respected']
+
+        preference_respected = False
+
+        if result:        
+            preference_respected = result['preference_respected']
 
         interval_scheduler_used = False
             
-        if result['tasks'] is None or len(result['tasks']) != len(tasks):
+        if result is None:
             # If we couldn't find a schedule, try to use interval scheduler
             result = interval_schedule(wake_up, sleep, obligations, tasks)
             preference_respected = result['preference_respected']
             interval_scheduler_used = True
-
+        
+        if result is not None:
+            if len(result['tasks']) != len(tasks):
+                result = interval_schedule(wake_up, sleep, obligations, tasks)
+                preference_respected = result['preference_respected']
+                interval_scheduler_used = True
+            
         result = result['tasks']
             
         # Convert datetime.time objects to string format in response
