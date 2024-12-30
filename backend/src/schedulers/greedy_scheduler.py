@@ -36,4 +36,7 @@ def fit_tasks_into_schedule(wake_up, sleep, obligations, tasks):
                     s for s in timeline if s != slot]
                 break
 
-    return scheduled_tasks
+    return {
+        "tasks": scheduled_tasks,
+        "preference_respected": False
+    }

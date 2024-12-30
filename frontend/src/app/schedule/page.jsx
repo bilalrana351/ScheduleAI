@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import { Clock } from "lucide-react"
 import Link from "next/link"

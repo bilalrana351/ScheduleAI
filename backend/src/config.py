@@ -68,3 +68,17 @@ DEFAULT_STATE_PRIORS = [0.8, 0.05, 0.05, 0.05, 0.05]
 DEV=True
 
 SERVER_URL = "http://localhost:5000"
+
+TIME_WORD_MAPPING = {
+    "M": "morning",
+    "A": "afternoon",
+    "E": "evening",
+    "N": "night"
+}
+
+TIME_PERIOD_MAPPING = {
+    "M": [5, 12],
+    "A": [12, 17],
+    "E": [17, 21],
+    "N": [21, 5]
+}

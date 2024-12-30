@@ -1,111 +1,200 @@
 from datetime import datetime, timedelta
-
 from src.validators.scheduler import minutes_between
+from src.core.helpers import get_time_to_preference
+
+def generate_domains(timeline, tasks):
+    """Generate initial domains for all tasks."""
+    domains = {}
+    for task in tasks:
+        duration = task["duration"]
+        task_domains = []
+        for slot in timeline:
+            available_minutes = minutes_between(slot["start"], slot["end"])
+            if available_minutes >= duration:
+                # Generate all possible start times within this slot
+                current_time = slot["start"]
+                while True:
+                    # Check if there's enough time left in the slot
+                    end_time = (datetime.combine(datetime.today(), current_time) +
+                              timedelta(minutes=duration)).time()
+                    if minutes_between(current_time, slot["end"]) >= duration:
+                        task_domains.append((current_time, end_time))
+                        # Move to next possible start time (e.g., in 30-minute increments)
+                        current_time = (datetime.combine(datetime.today(), current_time) +
+                                     timedelta(minutes=30)).time()
+                    else:
+                        break
+        domains[task["task"]] = task_domains
+    return domains
+
+def is_consistent(task1, time_slot1, task2, time_slot2):
+    """Check if two tasks' time slots are consistent with each other."""
+    # Convert times to minutes since midnight for easier comparison
+    t1_start = time_slot1[0].hour * 60 + time_slot1[0].minute
+    t1_end = time_slot1[1].hour * 60 + time_slot1[1].minute
+    t2_start = time_slot2[0].hour * 60 + time_slot2[0].minute
+    t2_end = time_slot2[1].hour * 60 + time_slot2[1].minute
+    
+    # Check for overlap
+    if t1_start < t2_end and t1_end > t2_start:
+        return False
+    
+    return True
+
+def filter_domain_by_preference(domain, preference):
+    """Filter domain based on time preference."""
+    if not preference:
+        return domain
+    
+    filtered_domain = []
+    for start_time, end_time in domain:
+        if get_time_to_preference(start_time) == preference.lower():
+            filtered_domain.append((start_time, end_time))
+    return filtered_domain
+
+def run_backtracking(domains, constraints, tasks):
+    """
+    Run backtracking algorithm with the given domains and constraints.
+    """
+    scheduled_tasks = []
+    used_slots = []  # Changed from set to list for easier time slot comparison
+
+    def select_unassigned_variable(current_domains, scheduled):
+        """Select the most constrained variable with preference priority."""
+        # First, try to schedule tasks with preferences
+        unassigned_with_pref = [(task["task"], len(current_domains[task["task"]]))
+                               for task in tasks 
+                               if task["task"] not in [t["task"] for t in scheduled] 
+                               and task.get("preference")]
+        
+        if unassigned_with_pref:
+            return min(unassigned_with_pref, key=lambda x: x[1])[0]
+        
+        # Then schedule tasks without preferences
+        unassigned = [(task["task"], len(current_domains[task["task"]]))
+                     for task in tasks 
+                     if task["task"] not in [t["task"] for t in scheduled]]
+        
+        if not unassigned:
+            return None
+        return min(unassigned, key=lambda x: x[1])[0]
+
+    def is_slot_consistent(time_slot):
+        """Check if a time slot is consistent with already used slots."""
+        for used_slot in used_slots:
+            if not is_consistent("", time_slot, "", used_slot):
+                return False
+        return True
+
+    def backtrack(current_domains):
+        """Recursive backtracking function."""
+        if len(scheduled_tasks) == len(tasks):
+            return True
+
+        # Select the next task to schedule
+        current_task = select_unassigned_variable(current_domains, scheduled_tasks)
+        if current_task is None:
+            return False
+
+        # Get the task object for preference information
+        task_obj = next(task for task in tasks if task["task"] == current_task)
+        
+        # Sort domain values based on preference if it exists
+        domain_values = current_domains[current_task][:]
+        if task_obj.get("preference"):
+            domain_values.sort(
+                key=lambda x: 0 if get_time_to_preference(x[0]) == task_obj["preference"].lower() else 1
+            )
+
+        # Try each value in the domain
+        for time_slot in domain_values:
+            if is_slot_consistent(time_slot):
+                start_time, end_time = time_slot
+                scheduled_tasks.append({
+                    "task": current_task,
+                    "start": start_time,
+                    "end": end_time
+                })
+                used_slots.append(time_slot)
+
+                # Create a copy of domains for this branch
+                branch_domains = {task: list(domain) for task, domain in current_domains.items()}
+                
+                # Update domain of current task to only include the assigned value
+                branch_domains[current_task] = [time_slot]
+
+                if backtrack(branch_domains):
+                    return True
+
+                scheduled_tasks.pop()
+                used_slots.pop()
+
+        return False
+
+    # Start backtracking search
+    initial_domains = {task: list(domain) for task, domain in domains.items()}
+    if backtrack(initial_domains):
+        return scheduled_tasks
+    return None
 
 def backtracking_slot_placement(wake_up, sleep, obligations, tasks):
     """
-    Function to schedule tasks into available time slots using a backtracking algorithm.
-
-    Parameters:
-        wake_up (datetime.time): Wake-up time.
-        sleep (datetime.time): Sleep time.
-        obligations (list): List of fixed obligations with 'start' and 'end' times.
-        tasks (list): List of tasks with 'task', 'duration', and other attributes.
-
+    Schedule tasks using backtracking algorithm with preference support.
+    
     Returns:
-        list: Scheduled tasks with their start and end times.
+        dict: A dictionary containing:
+            - 'tasks': List of scheduled tasks with start and end times
+            - 'preference_respected': Boolean indicating if preferences were respected
     """
-
-    # 1- Firstly I have initialized the timeline as a single slot from wake-up to sleep time.
+    # Create initial timeline
     timeline = [{"start": wake_up, "end": sleep}]
 
-    # 2- I Processed all obligations, splitting the timeline wherever obligations occupy time.
-    for obligation in sorted(obligations, key=lambda x: x["start"]):  # Obligations are sorted by start time
-        new_timeline = []  # Temporary timeline to store updated available slots
-
+    # Process obligations
+    for obligation in sorted(obligations, key=lambda x: x["start"]):
+        new_timeline = []
         for slot in timeline:
-            # Case 1: If the obligation starts within the current slot, split before it starts.
             if slot["start"] < obligation["start"] < slot["end"]:
                 new_timeline.append({"start": slot["start"], "end": obligation["start"]})
-
-            # Case 2: If the obligation ends within the current slot, split after it ends.
             if slot["start"] < obligation["end"] < slot["end"]:
                 new_timeline.append({"start": obligation["end"], "end": slot["end"]})
-
-            # Case 3: If the obligation does not overlap, retain the slot as is.
             if obligation["end"] <= slot["start"] or obligation["start"] >= slot["end"]:
                 new_timeline.append(slot)
-
-        # Updating the timeline after processing the current obligation.
         timeline = new_timeline
 
-    # 3- Initialize a list to store successfully scheduled tasks.
-    scheduled_tasks = []
+    # Generate initial domains
+    domains = generate_domains(timeline, tasks)
+    task_names = [task["task"] for task in tasks]
+    constraints = {name: set(task_names) - {name} for name in task_names}
 
-    # Defined the backtracking function for recursive task placement.
-    def backtrack(task_index, timeline):
-        """
-        Recursive function to schedule tasks using backtracking.
+    # Try scheduling with preferences first
+    preference_domains = {}
+    for task in tasks:
+        if task.get("preference"):
+            filtered_domain = filter_domain_by_preference(domains[task["task"]], task["preference"])
+            if filtered_domain:  # Only use filtered domain if it's not empty
+                preference_domains[task["task"]] = filtered_domain
+            else:
+                preference_domains[task["task"]] = domains[task["task"]]
+        else:
+            preference_domains[task["task"]] = domains[task["task"]]
 
-        Parameters:
-            task_index (int): Index of the current task to be scheduled.
-            timeline (list): List of available time slots.
+    # Try backtracking with preferences
+    preference_result = run_backtracking(preference_domains.copy(), constraints, tasks)
+    if preference_result:
+        return {
+            "tasks": preference_result,
+            "preference_respected": True
+        }
 
-        Returns:
-            bool: True if all tasks are successfully scheduled, False otherwise.
-        """
-        # Base case: If all tasks are placed, return True.
-        if task_index == len(tasks):
-            return True
+    # If scheduling with preferences fails, try regular backtracking
+    regular_result = run_backtracking(domains, constraints, tasks)
+    if regular_result:
+        return {
+            "tasks": regular_result,
+            "preference_respected": False
+        }
 
-        # Get the current task and its duration.
-        task = tasks[task_index]
-        duration_needed = task["duration"]
-
-        # Iterate through available time slots to find a suitable slot for the task.
-        for slot in timeline:
-            # Calculate available minutes in the current slot.
-            available_minutes = minutes_between(slot["start"], slot["end"])
-
-            # Check if the slot can accommodate the task's duration.
-            if available_minutes >= duration_needed:
-                # Assign the task a start and end time.
-                task_start = slot["start"]
-                task_end = (datetime.combine(datetime.today(), task_start) + timedelta(minutes=duration_needed)).time()
-
-                # Add the task to the scheduled list.
-                scheduled_tasks.append({"task": task["task"], "start": task_start, "end": task_end})
-
-                # Update the timeline by splitting the current slot after the task.
-                new_start = task_end  # Remaining time starts after the task ends.
-
-                if new_start != slot["end"]:
-                    new_timeline = [{"start": new_start, "end": slot["end"]}]
-                else:
-                    new_timeline = []
-
-                for s in timeline:
-                    if s != slot:
-                        new_timeline.append(s)
-                
-                # new_timeline = [{"start": new_start, "end": slot["end"]}] + [s for s in timeline if s != slot]
-
-                # Recursively try to place the next task with the updated timeline.
-                if backtrack(task_index + 1, new_timeline):
-                    return True
-
-                # Backtrack: Remove the task if it leads to an invalid solution.
-                scheduled_tasks.pop()
-
-        # If no valid slot is found for the current task, return False.
-        return False
-
-    # Step 4: Start the backtracking process from the first task.
-    backtrack(0, timeline)
-
-    # Return the list of successfully scheduled tasks.
-    return scheduled_tasks
-
+    return None
 
 def main():
     # Sample wake up and sleep times

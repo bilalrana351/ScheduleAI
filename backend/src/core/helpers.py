@@ -8,7 +8,15 @@ from num2words import num2words
 
 import random
 
-from src.config import STATES, MODEL_DIR, INDEXES_DIR, UNKNOWN_WORD, DEFAULT_STATE_PRIORS
+from src.config import (
+    STATES, 
+    MODEL_DIR, 
+    INDEXES_DIR, 
+    UNKNOWN_WORD, 
+    DEFAULT_STATE_PRIORS, 
+    TIME_WORD_MAPPING,
+    TIME_PERIOD_MAPPING
+)
 
 from src.hmms.training.templates import TrainingInstance
 
@@ -160,6 +168,19 @@ def find_and_replace_time(sentence: str, get_placeholder: bool = True) -> str:
         i += 1
 
     return " ".join(result)
+
+def is_between_time_period(time, time_period):
+    return time_period[0] <= time.hour < time_period[1]
+
+def get_time_to_preference(time):
+    if is_between_time_period(time, TIME_PERIOD_MAPPING["M"]):
+        return TIME_WORD_MAPPING["M"]
+    elif is_between_time_period(time, TIME_PERIOD_MAPPING["A"]):
+        return TIME_WORD_MAPPING["A"]
+    elif is_between_time_period(time, TIME_PERIOD_MAPPING["E"]):
+        return TIME_WORD_MAPPING["E"]
+    else:
+        return TIME_WORD_MAPPING["N"]
 
 def remove_special_characters(sentence: str, omitted_characters: List[str] = []) -> str:
     stripped_sentence = ''

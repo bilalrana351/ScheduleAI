@@ -1,66 +1,68 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+'use client';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 
 const defaultHeaders = {
   'Content-Type': 'application/json',
   'Accept': 'application/json',
+  'Origin': window.location.origin
+};
+
+// Add origin header only on client side
+if (typeof window !== 'undefined') {
+  defaultHeaders['Origin'] = window.location.origin;
+}
+
+const fetchWithCORS = async (url, options) => {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      credentials: 'include',
+      mode: 'cors',
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
 };
 
 export const inferNaturalLanguage = async (text) => {
-  try {
-    const response = await fetch(`${API_URL}/infer`, {
-      method: 'POST',
-      headers: defaultHeaders,
-      credentials: 'include',
-      mode: 'cors',
-      body: JSON.stringify({ text })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to process natural language input');
-    }
-
-    const data = await response.json();
-
-    console.log(data);
-    return data;
-  } catch (error) {
-    console.error('API Error:', error);
-    throw error;
-  }
+  return fetchWithCORS(`${API_URL}/infer`, {
+    method: 'POST',
+    body: JSON.stringify({ text })
+  });
 };
 
 export const generateSchedule = async (scheduleData, algorithm = 'ac3') => {
-  try {
-    const response = await fetch(`${API_URL}/schedule/${algorithm}`, {
-      method: 'POST',
-      headers: defaultHeaders,
-      credentials: 'include',
-      mode: 'cors',
-      body: JSON.stringify({
-        wake_up_time: scheduleData.wakeTime,
-        sleep_time: scheduleData.sleepTime,
-        obligations: scheduleData.obligations.map(obl => ({
-          task: obl.name,
-          start: obl.startTime,
-          end: obl.endTime
-        })),
-        regular_tasks: scheduleData.tasks.map(task => ({
-          task: task.name,
-          duration: task.duration
-        }))
-      })
-    });
+  // Ensure all durations are numbers
+  const formattedTasks = scheduleData.tasks.map(task => ({
+    task: task.name,
+    duration: parseInt(task.duration, 10),
+    preference: task.timeOfDay || ''  // Include preference, default to empty string
+  }));
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to generate schedule');
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('API Error:', error);
-    throw error;
-  }
-}; 
+  return fetchWithCORS(`${API_URL}/schedule/${algorithm}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      wake_up_time: scheduleData.wakeTime,
+      sleep_time: scheduleData.sleepTime,
+      obligations: scheduleData.obligations.map(obl => ({
+        task: obl.name,
+        start: obl.startTime,
+        end: obl.endTime
+      })),
+      regular_tasks: formattedTasks
+    })
+  });
+};

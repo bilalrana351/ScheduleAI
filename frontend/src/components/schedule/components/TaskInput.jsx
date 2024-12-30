@@ -44,9 +44,11 @@ export function TaskInput({
               }}
               className="w-full min-h-[100px] resize-none"
             />
-            {tempTask.isParsed && (
+            {tempTask.showForm && (
               <div className="bg-gray-50 p-4 rounded-lg space-y-3 border">
-                <h3 className="font-medium text-sm text-gray-700">Detected Information</h3>
+                <h3 className="font-medium text-sm text-gray-700">
+                  {tempTask.isParsed ? "Detected Information" : "Enter Task Details"}
+                </h3>
                 <div className="space-y-3">
                   {/* Task Name */}
                   <div className="space-y-1">
@@ -171,7 +173,7 @@ export function TaskInput({
               <ArrowRight className="h-4 w-4" />
               Next
             </Button>
-            {tempTask.isParsed && (
+            {tempTask.showForm && (
               <Button 
                 className="flex items-center gap-2"
                 onClick={onConfirm}
@@ -194,17 +196,33 @@ export function TaskInput({
             </Button>
           </>
         )}
-        {(!isTextInput || (isTextInput && tempTask.isParsed)) && (
-          <Button 
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={onGenerateSchedule}
-          >
-            <ArrowRight className="h-4 w-4" />
-            Generate Schedule
-          </Button>
+        {(!isTextInput || (isTextInput && tempTask.showForm)) && (
+          <div className="flex items-center gap-2">
+            <Select 
+              defaultValue="ac3"
+              onValueChange={(value) => onTaskInput('algorithm', value)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select algorithm" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ac3">AC3</SelectItem>
+                <SelectItem value="forward_check">Forward Check</SelectItem>
+                <SelectItem value="backtrack">Backtrack</SelectItem>
+                <SelectItem value="greedy">Greedy</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={onGenerateSchedule}
+            >
+              <ArrowRight className="h-4 w-4" />
+              Generate Schedule
+            </Button>
+          </div>
         )}
       </div>
     </div>
   );
-} 
+}

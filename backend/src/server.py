@@ -3,6 +3,7 @@ from src.schedulers.ac3 import ac3_schedule
 from src.schedulers.forward_checking import forward_checking_schedule
 from src.schedulers.backtracking import backtracking_slot_placement
 from src.schedulers.greedy_scheduler import fit_tasks_into_schedule
+from src.schedulers.interval_scheduler import interval_schedule
 from datetime import datetime
 from config import DEV
 from src.hmms.inference.infer import infer
@@ -10,19 +11,27 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 # Updated CORS configuration
+allowed_origins = ["*"] if DEV else ["http://localhost:3000", "http://127.0.0.1:3000"]
+
 CORS(app, 
      resources={
          r"/*": {
-             "origins": ["http://localhost:3000"],
+             "origins": allowed_origins,
              "methods": ["GET", "POST", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization"],
-             "supports_credentials": True  # Add this line
+             "supports_credentials": True
          }
      })
 
 @app.after_request
 def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+    # In dev mode, allow any origin, otherwise restrict to localhost:3000
+    origin = request.headers.get('Origin')
+    if DEV:
+        response.headers.add('Access-Control-Allow-Origin', origin or '*')
+    else:
+        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+    
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
@@ -36,6 +45,7 @@ def index():
 def process_natural_language():
     try:
         data = request.json
+        print(data, "is the data")
         if 'text' not in data:
             return jsonify({'error': 'Missing text field'}), 400
 
@@ -84,6 +94,8 @@ def process_natural_language():
 def schedule(algo):
     try:
         data = request.json
+
+        print(data, "is the data")
         
         # Convert string times to datetime.time objects
         wake_up = datetime.strptime(data['wake_up_time'], "%H:%M").time()
@@ -106,7 +118,7 @@ def schedule(algo):
             result = ac3_schedule(wake_up, sleep, obligations, tasks)
         elif algo == 'forward_check':
             result = forward_checking_schedule(wake_up, sleep, obligations, tasks)
-        elif algo == 'backward':
+        elif algo == 'backtrack':
             result = backtracking_slot_placement(wake_up, sleep, obligations, tasks)
         elif algo == 'greedy':
             result = fit_tasks_into_schedule(wake_up, sleep, obligations, tasks)
@@ -116,17 +128,28 @@ def schedule(algo):
             else:
                 return jsonify({'error': f'Invalid algorithm: {algo}'}), 400
             
-        if result is None:
-            raise ValueError("Could not find a valid schedule")
+        preference_respected = result['preference_respected']
+
+        interval_scheduler_used = False
+            
+        if result['tasks'] is None or len(result['tasks']) != len(tasks):
+            # If we couldn't find a schedule, try to use interval scheduler
+            result = interval_schedule(wake_up, sleep, obligations, tasks)
+            preference_respected = result['preference_respected']
+            interval_scheduler_used = True
+
+        result = result['tasks']
             
         # Convert datetime.time objects to string format in response
         formatted_result = []
+
         for task in result:
             formatted_result.append({
                 'task': task['task'],
                 'start': task['start'].strftime("%H:%M"),
                 'end': task['end'].strftime("%H:%M")
             })
+
             
         return jsonify({
             'schedule': formatted_result,
@@ -134,7 +157,10 @@ def schedule(algo):
                 'task': obl['task'],
                 'start': obl['start'].strftime("%H:%M"),
                 'end': obl['end'].strftime("%H:%M")
-            } for obl in obligations]
+            } for obl in obligations],
+            'found_schedule': len(result) > 0,
+            'preference_respected': preference_respected,
+            'alternative_scheduler_used': interval_scheduler_used
         })
         
     except KeyError as e:

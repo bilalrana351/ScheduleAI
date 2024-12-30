@@ -1,3 +1,5 @@
+'use client';
+
 import { useSchedule } from './hooks/useSchedule';
 import { TimeSelector } from './components/TimeSelector';
 import { ObligationInput } from './components/ObligationInput';

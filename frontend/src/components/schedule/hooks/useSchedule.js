@@ -10,6 +10,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 export const useSchedule = () => {
   const router = useRouter();
   const setSchedule = useScheduleStore((state) => state.setSchedule);
+  const setScheduleData = useScheduleStore((state) => state.setScheduleData);
   const [step, setStep] = useState(1);
   const [tempSelection, setTempSelection] = useState('');
   const [isTextInput, setIsTextInput] = useState(false);
@@ -29,18 +30,20 @@ export const useSchedule = () => {
     unit: 'minutes',
     error: '',
     naturalText: '',
-    isParsed: false
+    isParsed: false,
+    showForm: false
   });
 
   const [messages, setMessages] = useState([
     { type: 'bot', content: "Hi! Let's create your schedule. What time do you usually wake up?" }
   ]);
 
-  const [scheduleData, setScheduleData] = useState({
+  const [scheduleData, setLocalScheduleData] = useState({
     wakeTime: '',
     sleepTime: '',
     obligations: [],
     tasks: [],
+    algorithm: 'ac3'
   });
 
   const handleTimeSelect = (time) => {
@@ -62,7 +65,7 @@ export const useSchedule = () => {
     if (!tempSelection) return;
     if (type === 'sleepTime' && timeError) return;
     
-    setScheduleData(prev => ({
+    setLocalScheduleData(prev => ({
       ...prev,
       [type]: tempSelection
     }));
@@ -119,7 +122,7 @@ export const useSchedule = () => {
     if (!tempObligation.name || !tempObligation.startTime || !tempObligation.endTime) return;
     if (tempObligation.error) return;
 
-    setScheduleData(prev => ({
+    setLocalScheduleData(prev => ({
       ...prev,
       obligations: [...prev.obligations, {
         name: tempObligation.name,
@@ -187,24 +190,25 @@ export const useSchedule = () => {
       const { parsed_info } = await inferNaturalLanguage(text);
       
       if (parsed_info.task_name && parsed_info.duration) {
-        let durationInMinutes;
+        let duration = parsed_info.duration;
+        let unit = 'minutes';
+        
         if (parsed_info.duration_unit.toLowerCase().includes('hour')) {
-          durationInMinutes = parseInt(parsed_info.duration) * 60;
-        } else {
-          durationInMinutes = parseInt(parsed_info.duration);
+          unit = 'hours';
         }
 
         // Validate the duration
-        const error = validateTaskDuration(durationInMinutes.toString(), 'minutes', scheduleData);
+        const error = validateTaskDuration(duration, unit, scheduleData);
         
         setTempTask(prev => ({
           ...prev,
           name: parsed_info.task_name,
-          duration: durationInMinutes.toString(),
-          unit: 'minutes',
+          duration: duration,
+          unit: unit,
           error,
           timeOfDay: parsed_info.time_of_day,
-          isParsed: true
+          isParsed: true,
+          showForm: true
         }));
 
         // Add time of day information to the message if available
@@ -213,7 +217,21 @@ export const useSchedule = () => {
           ...prev,
           {
             type: 'bot',
-            content: `Detected task: "${parsed_info.task_name}" for ${parsed_info.duration} ${parsed_info.duration_unit}${timeInfo}`
+            content: `Detected task: "${parsed_info.task_name}" for ${duration} ${parsed_info.duration_unit}${timeInfo}`
+          }
+        ]);
+      } else {
+        setTempTask(prev => ({
+          ...prev,
+          isParsed: false,
+          showForm: true,
+          error: ''
+        }));
+        setMessages(prev => [
+          ...prev,
+          {
+            type: 'bot',
+            content: 'Could not detect task details. Please fill them in manually.'
           }
         ]);
       }
@@ -222,13 +240,14 @@ export const useSchedule = () => {
       setTempTask(prev => ({
         ...prev,
         error: 'Failed to process natural language input',
-        isParsed: false
+        isParsed: false,
+        showForm: true
       }));
       setMessages(prev => [
         ...prev,
         {
           type: 'bot',
-          content: 'Sorry, I had trouble understanding that. Please try rephrasing or use the structured input.'
+          content: 'Sorry, I had trouble understanding that. Please enter the task details manually.'
         }
       ]);
     }
@@ -237,22 +256,32 @@ export const useSchedule = () => {
   const confirmTask = () => {
     if (!tempTask.name || !tempTask.duration || tempTask.error) return;
 
+    // Convert duration to minutes as a number
     const durationInMinutes = tempTask.unit === 'hours' 
       ? parseInt(tempTask.duration) * 60 
       : parseInt(tempTask.duration);
 
-    setScheduleData(prev => ({
+    if (isNaN(durationInMinutes)) {
+      setTempTask(prev => ({
+        ...prev,
+        error: 'Invalid duration value'
+      }));
+      return;
+    }
+
+    setLocalScheduleData(prev => ({
       ...prev,
       tasks: [...prev.tasks, {
         name: tempTask.name,
-        duration: durationInMinutes.toString()
+        duration: durationInMinutes.toString(),
+        timeOfDay: tempTask.timeOfDay || ''
       }]
     }));
 
     const newMessages = [
       { 
         type: 'user', 
-        content: `${tempTask.name} (${tempTask.duration} ${tempTask.unit})` 
+        content: `${tempTask.name} (${tempTask.duration} ${tempTask.unit})${tempTask.timeOfDay ? ` in the ${tempTask.timeOfDay}` : ''}` 
       },
       { 
         type: 'bot', 
@@ -267,7 +296,9 @@ export const useSchedule = () => {
       unit: 'minutes',
       error: '',
       naturalText: '',
-      isParsed: false
+      isParsed: false,
+      showForm: false,
+      timeOfDay: ''
     });
   };
 
@@ -281,7 +312,9 @@ export const useSchedule = () => {
         }
       ]);
 
-      const result = await generateSchedule(scheduleData);
+      // Save schedule data to store before generating schedule
+      setScheduleData(scheduleData);
+      const result = await generateSchedule(scheduleData, scheduleData.algorithm);
       setSchedule(result);
       router.push('/timetable');
       
