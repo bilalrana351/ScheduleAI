@@ -1,0 +1,35 @@
+Output: List[    
+    {
+        "task": str,          # Task name
+            "start": datetime.time,# Start time of task
+            "end": datetime.time   # End time of task
+        }
+    ]
+
+Input
+# Input Parameters:
+wake_up: datetime.time
+    # The time to start the day (e.g., "08:00")
+
+sleep: datetime.time
+    # The time to end the day (e.g., "22:00")
+
+obligations: List[Dict]
+    # List of fixed appointments/commitments
+    # Format: [
+    #     {
+    #         "start": datetime.time,  # Start time of obligation
+    #         "end": datetime.time     # End time of obligation
+    #     },
+    #     ...
+    # ]
+
+tasks: List[Dict]
+    # List of tasks to be scheduled
+    # Format: [
+    #     {
+    #         "task": str,          # Task name/identifier
+    #         "duration": int       # Duration in minutes
+    #     },
+    #     ...
+    # ]
