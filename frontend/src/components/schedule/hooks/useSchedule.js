@@ -312,9 +312,23 @@ export const useSchedule = () => {
         }
       ]);
 
+      // If there's a valid current task, add it to the tasks array
+      const finalScheduleData = { ...scheduleData };
+      if (tempTask.name && tempTask.duration && !tempTask.error) {
+        finalScheduleData.tasks = [
+          ...scheduleData.tasks,
+          {
+            name: tempTask.name,
+            duration: tempTask.duration,
+            unit: tempTask.unit,
+            timeOfDay: tempTask.timeOfDay || undefined
+          }
+        ];
+      }
+
       // Save schedule data to store before generating schedule
-      setScheduleData(scheduleData);
-      const result = await generateSchedule(scheduleData, scheduleData.algorithm);
+      setScheduleData(finalScheduleData);
+      const result = await generateSchedule(finalScheduleData, finalScheduleData.algorithm);
       setSchedule(result);
       router.push('/timetable');
       

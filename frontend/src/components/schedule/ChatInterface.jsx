@@ -25,7 +25,8 @@ export default function ChatInterface() {
     handleNaturalLanguageInput,
     confirmTask,
     generateFinalSchedule,
-    setIsTextInput
+    setIsTextInput,
+    scheduleData
   } = useSchedule();
 
   const renderInputToggle = () => (
@@ -82,6 +83,7 @@ export default function ChatInterface() {
               onNaturalLanguageInput={handleNaturalLanguageInput}
               onConfirm={confirmTask}
               onGenerateSchedule={generateFinalSchedule}
+              scheduleData={scheduleData}
             />
           </>
         );

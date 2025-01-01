@@ -9,34 +9,18 @@ from config import DEV
 from src.hmms.inference.infer import infer
 from flask_cors import CORS
 from src.core.helpers import split_cross_midnight_obligations, combine_split_obligations
+import logging
+import traceback
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 # Updated CORS configuration
-allowed_origins = ["*"] if DEV else ["http://localhost:3000", "http://127.0.0.1:3000"]
+# allowed_origins = ["*"] if DEV else ["http://localhost:3000", "http://127.0.0.1:3000"]
 
-CORS(app, 
-     resources={
-         r"/*": {
-             "origins": allowed_origins,
-             "methods": ["GET", "POST", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization"],
-             "supports_credentials": True
-         }
-     })
-
-@app.after_request
-def after_request(response):
-    # In dev mode, allow any origin, otherwise restrict to localhost:3000
-    origin = request.headers.get('Origin')
-    if DEV:
-        response.headers.add('Access-Control-Allow-Origin', origin or '*')
-    else:
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
-    
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
+# Simpler CORS setup that allows all origins in dev mode
+CORS(app)
 
 @app.route('/')
 def index():
@@ -97,10 +81,11 @@ def schedule(algo):
         data = request.json
 
         print(data, "is the data")
-        
         # Convert string times to datetime.time objects
         wake_up = datetime.strptime(data['wake_up_time'], "%H:%M").time()
         sleep = datetime.strptime(data['sleep_time'], "%H:%M").time()
+
+        print(data['obligations'], "is the obligations")
         
         # Convert obligation times
         obligations = []
@@ -111,6 +96,7 @@ def schedule(algo):
                 'end': datetime.strptime(obligation['end'], "%H:%M").time()
             })
         
+
         # Split obligations that cross midnight
         split_obligations = split_cross_midnight_obligations(obligations)
         
@@ -144,21 +130,27 @@ def schedule(algo):
             if len(result['tasks']) != len(tasks):
                 result = interval_schedule(wake_up, sleep, split_obligations, tasks)
                 interval_scheduler_used = True
-            
-        result = result['tasks']
-        
+
+        print(result, "is the result")
+
+        print(result['tasks'], "is the tasks")
+                    
         # Combine split obligations back together
-        result = combine_split_obligations(result)
+        combined_result = combine_split_obligations(result['tasks'])
+
+        print(combined_result, "is the combined result")
             
         # Convert datetime.time objects to string format in response
         formatted_result = []
 
-        for task in result:
+        for task in combined_result:
             formatted_result.append({
                 'task': task['task'],
                 'start': task['start'].strftime("%H:%M"),
                 'end': task['end'].strftime("%H:%M")
             })
+
+        print(formatted_result, "is the formatted result")
 
             
         return jsonify({

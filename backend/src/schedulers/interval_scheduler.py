@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from src.validators.scheduler import minutes_between
-from src.core.helpers import get_time_to_preference, adjust_wakeup_and_sleep
+from src.core.helpers import get_time_to_preference, adjust_wakeup_and_sleep, get_available_slots
 
 def get_smallest_duration(tasks):
     """Get the smallest task duration from the list of tasks."""
@@ -10,24 +10,29 @@ def create_intervals(timeline, interval_size):
     """Create fixed-size intervals from the available timeline."""
     intervals = []
     for slot in timeline:
-        current_time = slot["start"]
-        while current_time < slot["end"]:
-            end_time = (datetime.combine(datetime.today(), current_time) + 
-                       timedelta(minutes=interval_size)).time()
+        current_datetime = datetime.combine(slot["start"].date(), slot["start"].time())
+        slot_end_datetime = datetime.combine(slot["start"].date(), slot["end"].time())
+        
+        # Adjust end datetime if the slot crosses midnight
+        if slot["start"].time() > slot["end"].time():
+            slot_end_datetime += timedelta(days=1)
+            
+        while current_datetime < slot_end_datetime:
+            end_datetime = current_datetime + timedelta(minutes=interval_size)
             
             # If this interval would extend beyond the slot, cap it
-            if end_time > slot["end"]:
-                end_time = slot["end"]
+            if end_datetime > slot_end_datetime:
+                end_datetime = slot_end_datetime
             
-            if current_time < end_time:  # Only add if there's actual time in the interval
+            if current_datetime < end_datetime:  # Only add if there's actual time in the interval
                 intervals.append({
-                    "start": current_time,
-                    "end": end_time,
-                    "duration": minutes_between(current_time, end_time),
+                    "start": current_datetime.time(),
+                    "end": end_datetime.time(),
+                    "duration": (end_datetime - current_datetime).total_seconds() / 60,
                     "assigned": False
                 })
             
-            current_time = end_time
+            current_datetime = end_datetime
     return intervals
 
 def get_intervals_by_preference(intervals, preference):
@@ -93,7 +98,7 @@ def interval_schedule(wake_up, sleep, obligations, tasks):
     # Create initial timeline
     timeline = adjust_wakeup_and_sleep(wake_up, sleep)
 
-    
+    timeline = get_available_slots(timeline)
     # Process obligations
     for obligation in sorted(obligations, key=lambda x: x["start"]):
         new_timeline = []

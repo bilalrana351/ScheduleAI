@@ -2,23 +2,16 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 
+// Simplified headers
 const defaultHeaders = {
   'Content-Type': 'application/json',
-  'Accept': 'application/json',
-  'Origin': window.location.origin
+  'Accept': 'application/json'
 };
-
-// Add origin header only on client side
-if (typeof window !== 'undefined') {
-  defaultHeaders['Origin'] = window.location.origin;
-}
 
 const fetchWithCORS = async (url, options) => {
   try {
     const response = await fetch(url, {
       ...options,
-      credentials: 'include',
-      mode: 'cors',
       headers: {
         ...defaultHeaders,
         ...options.headers,

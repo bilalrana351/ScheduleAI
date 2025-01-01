@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from src.core.helpers import get_time_to_preference, adjust_wakeup_and_sleep
+from src.core.helpers import get_time_to_preference, adjust_wakeup_and_sleep, get_available_slots
 
 def minutes_between(start_time, end_time):
     start_dt = datetime.combine(datetime.today(), start_time)
@@ -175,6 +175,7 @@ def forward_checking_schedule(wake_up, sleep, obligations, tasks, rest_time=0):
     # Create initial timeline
     timeline = adjust_wakeup_and_sleep(wake_up, sleep)
 
+    timeline = get_available_slots(timeline)
 
     # If there are no task then just add them transparently
     if len(tasks) == 0:

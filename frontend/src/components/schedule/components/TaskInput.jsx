@@ -24,11 +24,19 @@ export function TaskInput({
   onTaskInput,
   onNaturalLanguageInput,
   onConfirm,
-  onGenerateSchedule
+  onGenerateSchedule,
+  scheduleData
 }) {
   const durationOptions = tempTask.unit === 'hours' 
     ? Array.from({ length: 24 }, (_, i) => (i + 1).toString())
     : Array.from({ length: 60 }, (_, i) => (i + 1).toString());
+
+  // Check if we have all required data before enabling generate schedule
+  const canGenerateSchedule = 
+    scheduleData.wakeTime && 
+    scheduleData.sleepTime && 
+    (scheduleData.tasks.length > 0 || 
+      (tempTask.name && tempTask.duration && !tempTask.error));
 
   return (
     <div className="space-y-4">
@@ -216,6 +224,7 @@ export function TaskInput({
               variant="outline"
               className="flex items-center gap-2"
               onClick={onGenerateSchedule}
+              disabled={!canGenerateSchedule}
             >
               <ArrowRight className="h-4 w-4" />
               Generate Schedule

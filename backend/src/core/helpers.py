@@ -502,6 +502,9 @@ def split_cross_midnight_obligations(obligations):
     split_obligations = []
     
     for obligation in obligations:
+        if obligation['end'] == datetime.strptime("00:00", "%H:%M").time():
+            obligation['end'] = datetime.strptime("23:59", "%H:%M").time()
+
         start_minutes = obligation['start'].hour * 60 + obligation['start'].minute
         end_minutes = obligation['end'].hour * 60 + obligation['end'].minute
         
@@ -555,16 +558,27 @@ def adjust_wakeup_and_sleep(wake_up, sleep):
     # Handle edge case where wake_up and sleep are the same time
     if wake_up == sleep:
         return []
+    
+    # Check if the sleep time is 00:00
+    if sleep == datetime.strptime("00:00", "%H:%M").time():
+        sleep = datetime.strptime("23:59", "%H:%M").time()
         
     # Handle normal case where wake up is before sleep time
     if wake_up > sleep:
-        return [{"start": wake_up, "end": sleep}]
+        return [{"start": sleep, "end": wake_up}]
         
     # Handle case where sleep time is before wake up (crosses midnight)
     elif wake_up < sleep:
         midnight_end = datetime.strptime("23:59", "%H:%M").time()
         midnight_start = datetime.strptime("00:00", "%H:%M").time()
+
+        # If either of the sleep, midnight end or the midnight start or the wake up overlap then they should not be scheduled
+        if sleep == midnight_end:
+            return [{"start": midnight_start, "end": wake_up}]
         
+        if wake_up == midnight_start:
+            return [{"start": sleep, "end": midnight_end}]
+
         # Return two time periods:
         # 1. From sleep time to midnight
         # 2. From midnight to wake up time
@@ -572,6 +586,57 @@ def adjust_wakeup_and_sleep(wake_up, sleep):
             {"start": sleep, "end": midnight_end},
             {"start": midnight_start, "end": wake_up}
         ]
+
+
+def get_available_slots(timeline):
+    """
+    Returns time slots that are not covered in the timeline.
+    
+    Args:
+        timeline: List of dicts with 'start' and 'end' times
+        
+    Returns:
+        List of dicts with 'start' and 'end' times representing available slots
+    """
+    if not timeline:
+        return []
+        
+    # Sort timeline by start time
+    sorted_timeline = sorted(timeline, key=lambda x: x['start'])
+    
+    # Initialize result list
+    available_slots = []
+    
+    # Get the full day boundaries
+    day_start = datetime.strptime("00:00", "%H:%M").time()
+    day_end = datetime.strptime("23:59", "%H:%M").time()
+    
+    # Check if there's a gap at the start of the day
+    if sorted_timeline[0]['start'] != day_start:
+        available_slots.append({
+            'start': day_start,
+            'end': sorted_timeline[0]['start']
+        })
+    
+    # Check for gaps between timeline slots
+    for i in range(len(sorted_timeline) - 1):
+        current_end = sorted_timeline[i]['end']
+        next_start = sorted_timeline[i + 1]['start']
+        
+        if current_end != next_start:
+            available_slots.append({
+                'start': current_end,
+                'end': next_start
+            })
+    
+    # Check if there's a gap at the end of the day
+    if sorted_timeline[-1]['end'] != day_end:
+        available_slots.append({
+            'start': sorted_timeline[-1]['end'],
+            'end': day_end
+        })
+    
+    return available_slots
 
 if __name__ == "__main__":
     pass

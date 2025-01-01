@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from src.validators.scheduler import minutes_between
-from src.core.helpers import get_time_to_preference, adjust_wakeup_and_sleep
+from src.core.helpers import get_time_to_preference, adjust_wakeup_and_sleep, get_available_slots
 
 def generate_domains(timeline, tasks):
     """Generate initial domains for all tasks."""
@@ -148,6 +148,8 @@ def backtracking_slot_placement(wake_up, sleep, obligations, tasks):
     """
     # Create initial timeline
     timeline = adjust_wakeup_and_sleep(wake_up, sleep)
+
+    timeline = get_available_slots(timeline)
 
     # If there are no task then just add them transparently
     if len(tasks) == 0:

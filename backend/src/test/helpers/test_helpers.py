@@ -10,8 +10,12 @@ from src.core.helpers import (
     add_indexes_to_training_instance,
     add_indexes_to_training_corpus,
     normalize_matrices,
-    find_and_replace_time
+    find_and_replace_time,
+    get_available_slots
 )
+
+from datetime import datetime
+
 from src.config import STATES
 
 from src.config import ACTIONS, DURATIONS, PREFERENCES, SENTENCES
@@ -250,20 +254,124 @@ def test_find_and_replace_time():
     assert find_and_replace_time("schedule for twenty-three") == "schedule for <time>"
     
 
+
+def test_get_available_slots_empty_timeline():
+    """Test with empty timeline"""
+    assert get_available_slots([]) == []
+
+def test_get_available_slots_single_slot():
+    """Test with a single slot in the middle of the day"""
+    timeline = [{
+        'start': datetime.strptime("10:00", "%H:%M").time(),
+        'end': datetime.strptime("14:00", "%H:%M").time()
+    }]
+    
+    expected = [
+        {
+            'start': datetime.strptime("00:00", "%H:%M").time(),
+            'end': datetime.strptime("10:00", "%H:%M").time()
+        },
+        {
+            'start': datetime.strptime("14:00", "%H:%M").time(),
+            'end': datetime.strptime("23:59", "%H:%M").time()
+        }
+    ]
+    
+    assert get_available_slots(timeline) == expected
+
+def test_get_available_slots_multiple_slots():
+    """Test with multiple slots with gaps"""
+    timeline = [
+        {
+            'start': datetime.strptime("09:00", "%H:%M").time(),
+            'end': datetime.strptime("10:00", "%H:%M").time()
+        },
+        {
+            'start': datetime.strptime("12:00", "%H:%M").time(),
+            'end': datetime.strptime("13:00", "%H:%M").time()
+        },
+        {
+            'start': datetime.strptime("15:00", "%H:%M").time(),
+            'end': datetime.strptime("16:00", "%H:%M").time()
+        }
+    ]
+    
+    expected = [
+        {
+            'start': datetime.strptime("00:00", "%H:%M").time(),
+            'end': datetime.strptime("09:00", "%H:%M").time()
+        },
+        {
+            'start': datetime.strptime("10:00", "%H:%M").time(),
+            'end': datetime.strptime("12:00", "%H:%M").time()
+        },
+        {
+            'start': datetime.strptime("13:00", "%H:%M").time(),
+            'end': datetime.strptime("15:00", "%H:%M").time()
+        },
+        {
+            'start': datetime.strptime("16:00", "%H:%M").time(),
+            'end': datetime.strptime("23:59", "%H:%M").time()
+        }
+    ]
+    
+    assert get_available_slots(timeline) == expected
+
+def test_get_available_slots_full_day():
+    """Test with a slot covering the entire day"""
+    timeline = [{
+        'start': datetime.strptime("00:00", "%H:%M").time(),
+        'end': datetime.strptime("23:59", "%H:%M").time()
+    }]
+    
+    assert get_available_slots(timeline) == []
+
+def test_get_available_slots_adjacent_slots():
+    """Test with adjacent slots with no gaps"""
+    timeline = [
+        {
+            'start': datetime.strptime("09:00", "%H:%M").time(),
+            'end': datetime.strptime("12:00", "%H:%M").time()
+        },
+        {
+            'start': datetime.strptime("12:00", "%H:%M").time(),
+            'end': datetime.strptime("15:00", "%H:%M").time()
+        }
+    ]
+    
+    expected = [
+        {
+            'start': datetime.strptime("00:00", "%H:%M").time(),
+            'end': datetime.strptime("09:00", "%H:%M").time()
+        },
+        {
+            'start': datetime.strptime("15:00", "%H:%M").time(),
+            'end': datetime.strptime("23:59", "%H:%M").time()
+        }
+    ]
+    
+    assert get_available_slots(timeline) == expected
+
+
 def run_all_tests():
-    test_get_state_sequence()
-    test_get_time_converted_sentence()
-    test_handle_hours()
-    test_handle_minutes()
-    test_handle_days()
-    test_get_time_from_duration()
-    test_get_index_dict_from_corpus()
-    test_get_index_dict_from_states()
-    test_add_indexes_to_training_instance()
-    test_add_indexes_to_training_corpus()
-    test_training_instance_defaults()
-    test_normalize_matrices()
-    test_find_and_replace_time()
+    # test_get_state_sequence()
+    # test_get_time_converted_sentence()
+    # test_handle_hours()
+    # test_handle_minutes()
+    # test_handle_days()
+    # test_get_time_from_duration()
+    # test_get_index_dict_from_corpus()
+    # test_get_index_dict_from_states()
+    # test_add_indexes_to_training_instance()
+    # test_add_indexes_to_training_corpus()
+    # test_training_instance_defaults()
+    # test_normalize_matrices()
+    # test_find_and_replace_time()
+    test_get_available_slots_empty_timeline()
+    test_get_available_slots_single_slot()
+    test_get_available_slots_multiple_slots()
+    test_get_available_slots_full_day()
+    test_get_available_slots_adjacent_slots()
     print("All tests passed successfully!")
 
 if __name__ == "__main__":

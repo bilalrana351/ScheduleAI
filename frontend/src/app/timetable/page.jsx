@@ -38,6 +38,7 @@ export default function TimetablePage() {
   const schedule = useScheduleStore((state) => state.schedule);
   const setSchedule = useScheduleStore((state) => state.setSchedule);
   const scheduleData = useScheduleStore((state) => state.scheduleData);
+  const setScheduleData = useScheduleStore((state) => state.setScheduleData);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -53,7 +54,12 @@ export default function TimetablePage() {
     try {
       setIsLoading(true);
       setError('');
-      const result = await generateSchedule(scheduleData, selectedAlgorithm);
+      // Update scheduleData with the selected algorithm
+      const updatedScheduleData = {
+        ...scheduleData,
+        algorithm: selectedAlgorithm
+      };
+      const result = await generateSchedule(updatedScheduleData, selectedAlgorithm);
       setSchedule(result);
     } catch (error) {
       setError('Failed to generate schedule with the selected algorithm');
