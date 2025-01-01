@@ -11,8 +11,6 @@ setup(
         'tqdm',
         'scikit-learn',
         'wget',
-        'langchain',
-        'langchain-openai',
         'num2words',
         'word2number',
         'flask',
