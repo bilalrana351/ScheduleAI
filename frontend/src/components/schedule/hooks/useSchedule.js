@@ -312,16 +312,19 @@ export const useSchedule = () => {
         }
       ]);
 
-      // If there's a valid current task, add it to the tasks array
       const finalScheduleData = { ...scheduleData };
       if (tempTask.name && tempTask.duration && !tempTask.error) {
+        // Convert duration to minutes before adding to tasks
+        const durationInMinutes = tempTask.unit === 'hours' 
+          ? parseInt(tempTask.duration) * 60 
+          : parseInt(tempTask.duration);
+  
         finalScheduleData.tasks = [
           ...scheduleData.tasks,
           {
             name: tempTask.name,
-            duration: tempTask.duration,
-            unit: tempTask.unit,
-            timeOfDay: tempTask.timeOfDay || undefined
+            duration: durationInMinutes.toString(), // Convert to minutes
+            preference: tempTask.timeOfDay || ''
           }
         ];
       }

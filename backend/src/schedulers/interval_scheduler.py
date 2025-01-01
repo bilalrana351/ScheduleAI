@@ -9,12 +9,14 @@ def get_smallest_duration(tasks):
 def create_intervals(timeline, interval_size):
     """Create fixed-size intervals from the available timeline."""
     intervals = []
+    today = datetime.today().date()  # Get today's date as base
+    
     for slot in timeline:
-        current_datetime = datetime.combine(slot["start"].date(), slot["start"].time())
-        slot_end_datetime = datetime.combine(slot["start"].date(), slot["end"].time())
+        current_datetime = datetime.combine(today, slot["start"])
+        slot_end_datetime = datetime.combine(today, slot["end"])
         
         # Adjust end datetime if the slot crosses midnight
-        if slot["start"].time() > slot["end"].time():
+        if slot["start"] > slot["end"]:
             slot_end_datetime += timedelta(days=1)
             
         while current_datetime < slot_end_datetime:
@@ -99,6 +101,7 @@ def interval_schedule(wake_up, sleep, obligations, tasks):
     timeline = adjust_wakeup_and_sleep(wake_up, sleep)
 
     timeline = get_available_slots(timeline)
+    
     # Process obligations
     for obligation in sorted(obligations, key=lambda x: x["start"]):
         new_timeline = []
