@@ -5,6 +5,7 @@ import os
 
 from src.hmms.model import Model
 from num2words import num2words
+from datetime import datetime, timedelta
 
 import random
 
@@ -496,6 +497,60 @@ def replace_time_with_number(result: Dict[str, List[str]], sentence: str, get_pl
             result['state_sequence_with_words'][index][1] = word
 
     return result
+
+def split_cross_midnight_obligations(obligations):
+    total_day_minutes = 24 * 60
+    split_obligations = []
+    
+    for obligation in obligations:
+        start_minutes = obligation['start'].hour * 60 + obligation['start'].minute
+        end_minutes = obligation['end'].hour * 60 + obligation['end'].minute
+        
+        if start_minutes > end_minutes:  # Crosses midnight
+            # Create first part (from start to midnight)
+            midnight = datetime.strptime("23:59", "%H:%M").time()
+            split_obligations.append({
+                'task': obligation['task'] + " (Part 1)",
+                'start': obligation['start'],
+                'end': midnight
+            })
+            
+            # Create second part (from midnight to end)
+            next_day_start = datetime.strptime("00:00", "%H:%M").time()
+            split_obligations.append({
+                'task': obligation['task'] + " (Part 2)",
+                'start': next_day_start,
+                'end': obligation['end']
+            })
+        else:
+            split_obligations.append(obligation)
+    
+    return split_obligations
+
+def combine_split_obligations(schedule):
+    # Group tasks by their base name (removing " (Part 1)" and " (Part 2)")
+    task_groups = {}
+    for task in schedule:
+        base_name = task['task'].replace(" (Part 1)", "").replace(" (Part 2)", "")
+        if base_name not in task_groups:
+            task_groups[base_name] = []
+        task_groups[base_name].append(task)
+    
+    # Combine split tasks
+    combined_schedule = []
+    for base_name, tasks in task_groups.items():
+        if len(tasks) == 2 and "(Part 1)" in tasks[0]['task'] and "(Part 2)" in tasks[1]['task']:
+            # This was a split task, combine it
+            combined_schedule.append({
+                'task': base_name,
+                'start': tasks[0]['start'],
+                'end': tasks[1]['end']
+            })
+        else:
+            # This was not a split task, add it as is
+            combined_schedule.extend(tasks)
+    
+    return combined_schedule
 
 if __name__ == "__main__":
     pass

@@ -91,7 +91,10 @@ def interval_schedule(wake_up, sleep, obligations, tasks):
             - 'preference_respected': Boolean indicating if preferences were respected
     """
     # Create initial timeline
-    timeline = [{"start": wake_up, "end": sleep}]
+    if wake_up > sleep:
+        timeline = [{"start": wake_up, "end": sleep}]
+    else:
+        timeline = [{"start": sleep, "end": wake_up}]
     
     # Process obligations
     for obligation in sorted(obligations, key=lambda x: x["start"]):
@@ -105,16 +108,25 @@ def interval_schedule(wake_up, sleep, obligations, tasks):
                 new_timeline.append(slot)
         timeline = new_timeline
     
+    # If there are no task then just add them transparently
+    if len(tasks) == 0:
+        return {"tasks": [], "preference_respected": True}
+    
     # Get smallest duration for interval size
-    interval_size = get_smallest_duration(tasks)
+    try:
+        interval_size = get_smallest_duration(tasks)
+    except Exception as e:
+        return None
     
     # Create fixed-size intervals
     intervals = create_intervals(timeline, interval_size)
+
     
     # Sort tasks by preference order (morning -> afternoon -> evening -> night -> no preference)
-    preference_order = {"morning": 0, "afternoon": 1, "evening": 2, "night": 3, None: 4}
+    preference_order = {"morning": 0, "afternoon": 1, "evening": 2, "night": 3, "none": 4}
+    
     sorted_tasks = sorted(tasks, 
-                        key=lambda x: (preference_order.get(x.get("preference", None)), -x["duration"]))
+                        key=lambda x: (preference_order.get(x.get("preference", "none")), -x["duration"]))
     
     scheduled_tasks = []
     all_preferences_respected = True

@@ -49,14 +49,36 @@ export default function TimetablePage() {
   if (!schedule.found_schedule) {
     return (
       <div className="container mx-auto py-8">
-        <h1 className="text-2xl font-bold mb-6">Schedule Generation Failed</h1>
+        <h1 className="text-2xl font-bold mb-6">Schedule Generation Status</h1>
         <Alert variant="destructive" className="mb-6">
           <AlertDescription>
             I couldn't find a valid schedule that fits all your tasks within the available time slots. 
             Please try reducing task durations or removing some tasks.
           </AlertDescription>
         </Alert>
-        <div className="flex items-center gap-4">
+
+        {/* Display Obligations Section */}
+        {schedule.obligations && schedule.obligations.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold mb-4">Your Fixed Obligations</h2>
+            <div className="grid gap-3">
+              {schedule.obligations.map((item, index) => (
+                <Card key={index} className="p-4 hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-medium">{item.task}</h3>
+                    </div>
+                    <div className="text-gray-600">
+                      {item.start} - {item.end}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-4 mt-6">
           <Select 
             value={selectedAlgorithm}
             onValueChange={setSelectedAlgorithm}

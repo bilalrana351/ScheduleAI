@@ -4,10 +4,11 @@ from src.schedulers.forward_checking import forward_checking_schedule
 from src.schedulers.backtracking import backtracking_slot_placement
 from src.schedulers.greedy_scheduler import fit_tasks_into_schedule
 from src.schedulers.interval_scheduler import interval_schedule
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import DEV
 from src.hmms.inference.infer import infer
 from flask_cors import CORS
+from src.core.helpers import split_cross_midnight_obligations, combine_split_obligations
 
 app = Flask(__name__)
 # Updated CORS configuration
@@ -110,18 +111,21 @@ def schedule(algo):
                 'end': datetime.strptime(obligation['end'], "%H:%M").time()
             })
         
+        # Split obligations that cross midnight
+        split_obligations = split_cross_midnight_obligations(obligations)
+        
         # Tasks are already in correct format
         tasks = data['regular_tasks']
         
         # Call appropriate scheduler based on algo parameter
         if algo == 'ac3':
-            result = ac3_schedule(wake_up, sleep, obligations, tasks)
+            result = ac3_schedule(wake_up, sleep, split_obligations, tasks)
         elif algo == 'forward_check':
-            result = forward_checking_schedule(wake_up, sleep, obligations, tasks)
+            result = forward_checking_schedule(wake_up, sleep, split_obligations, tasks)
         elif algo == 'backtrack':
-            result = backtracking_slot_placement(wake_up, sleep, obligations, tasks)
+            result = backtracking_slot_placement(wake_up, sleep, split_obligations, tasks)
         elif algo == 'greedy':
-            result = fit_tasks_into_schedule(wake_up, sleep, obligations, tasks)
+            result = fit_tasks_into_schedule(wake_up, sleep, split_obligations, tasks)
         else:
             if DEV:
                 raise ValueError(f"Invalid algorithm: {algo}")
@@ -137,17 +141,20 @@ def schedule(algo):
             
         if result is None:
             # If we couldn't find a schedule, try to use interval scheduler
-            result = interval_schedule(wake_up, sleep, obligations, tasks)
+            result = interval_schedule(wake_up, sleep, split_obligations, tasks)
             preference_respected = result['preference_respected']
             interval_scheduler_used = True
         
         if result is not None:
             if len(result['tasks']) != len(tasks):
-                result = interval_schedule(wake_up, sleep, obligations, tasks)
+                result = interval_schedule(wake_up, sleep, split_obligations, tasks)
                 preference_respected = result['preference_respected']
                 interval_scheduler_used = True
             
         result = result['tasks']
+        
+        # Combine split obligations back together
+        result = combine_split_obligations(result)
             
         # Convert datetime.time objects to string format in response
         formatted_result = []
@@ -166,7 +173,7 @@ def schedule(algo):
                 'task': obl['task'],
                 'start': obl['start'].strftime("%H:%M"),
                 'end': obl['end'].strftime("%H:%M")
-            } for obl in obligations],
+            } for obl in obligations],  # Use original obligations here, not split ones
             'found_schedule': len(result) > 0,
             'preference_respected': preference_respected,
             'alternative_scheduler_used': interval_scheduler_used

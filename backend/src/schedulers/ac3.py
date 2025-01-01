@@ -53,7 +53,16 @@ def ac3_schedule(wake_up, sleep, obligations, tasks, rest_time=0):
     constraints = {name: set(task_names) - {name} for name in task_names}
 
     # Create initial timeline slots
-    timeline = [{"start": wake_up, "end": sleep}]
+    if wake_up < sleep:
+        timeline = [{"start": wake_up, "end": sleep}]
+    else:
+        timeline = [{"start": sleep, "end": wake_up}]
+
+    print(timeline, "is the timeline")
+
+    # If there are no task then just add them transparently
+    if len(tasks) == 0:
+        return {"tasks": [], "preference_respected": True}
     
     # Split timeline based on obligations
     for obligation in sorted(obligations, key=lambda x: x["start"]):

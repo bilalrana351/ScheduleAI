@@ -147,7 +147,14 @@ def backtracking_slot_placement(wake_up, sleep, obligations, tasks):
             - 'preference_respected': Boolean indicating if preferences were respected
     """
     # Create initial timeline
-    timeline = [{"start": wake_up, "end": sleep}]
+    if wake_up > sleep:
+        timeline = [{"start": wake_up, "end": sleep}]
+    else:
+        timeline = [{"start": sleep, "end": wake_up}]
+
+    # If there are no task then just add them transparently
+    if len(tasks) == 0:
+        return {"tasks": [], "preference_respected": True}
 
     # Process obligations
     for obligation in sorted(obligations, key=lambda x: x["start"]):
