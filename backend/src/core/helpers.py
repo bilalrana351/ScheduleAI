@@ -499,7 +499,6 @@ def replace_time_with_number(result: Dict[str, List[str]], sentence: str, get_pl
     return result
 
 def split_cross_midnight_obligations(obligations):
-    total_day_minutes = 24 * 60
     split_obligations = []
     
     for obligation in obligations:
@@ -551,6 +550,28 @@ def combine_split_obligations(schedule):
             combined_schedule.extend(tasks)
     
     return combined_schedule
+
+def adjust_wakeup_and_sleep(wake_up, sleep):
+    # Handle edge case where wake_up and sleep are the same time
+    if wake_up == sleep:
+        return []
+        
+    # Handle normal case where wake up is before sleep time
+    if wake_up > sleep:
+        return [{"start": wake_up, "end": sleep}]
+        
+    # Handle case where sleep time is before wake up (crosses midnight)
+    elif wake_up < sleep:
+        midnight_end = datetime.strptime("23:59", "%H:%M").time()
+        midnight_start = datetime.strptime("00:00", "%H:%M").time()
+        
+        # Return two time periods:
+        # 1. From sleep time to midnight
+        # 2. From midnight to wake up time
+        return [
+            {"start": sleep, "end": midnight_end},
+            {"start": midnight_start, "end": wake_up}
+        ]
 
 if __name__ == "__main__":
     pass

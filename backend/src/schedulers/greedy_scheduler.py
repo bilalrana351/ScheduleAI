@@ -1,4 +1,5 @@
 from datetime import timedelta, datetime
+from src.core.helpers import adjust_wakeup_and_sleep
 
 def minutes_between(start_time, end_time):
     start_dt = datetime.combine(datetime.today(), start_time)
@@ -7,26 +8,11 @@ def minutes_between(start_time, end_time):
 
 def fit_tasks_into_schedule(wake_up, sleep, obligations, tasks):
     total_day_minutes = 24 * 60
-    timeline = []
     
-    # Initialize timeline based on wake/sleep times
-    wake_minutes = wake_up.hour * 60 + wake_up.minute
-    sleep_minutes = sleep.hour * 60 + sleep.minute
-    
-    if wake_minutes < sleep_minutes:
-        timeline = [{"start": wake_up, "end": sleep}]
-    else:
-        # If wake time is after sleep time, create two intervals
-        midnight = datetime.strptime("00:00", "%H:%M").time()
-        next_midnight = datetime.strptime("23:59", "%H:%M").time()
-        timeline = [
-            {"start": wake_up, "end": next_midnight},
-            {"start": midnight, "end": sleep}
-        ]
-
+    timeline = adjust_wakeup_and_sleep(wake_up, sleep)
     # If there are no task then just add them transparently
     if len(tasks) == 0:
-        return {"tasks": [], "preference_respected": True}
+        return {"tasks": [], "preference_respected": True, "found_schedule": True}
     
     # Process obligations
     for obligation in sorted(obligations, key=lambda x: (x["start"].hour * 60 + x["start"].minute)):
@@ -116,4 +102,8 @@ def fit_tasks_into_schedule(wake_up, sleep, obligations, tasks):
         if not task_scheduled:
             print(f"Warning: Could not schedule task '{task['task']}'")
 
-    return scheduled_tasks
+    return {
+        "tasks": scheduled_tasks,
+        "preference_respected": True,
+        "found_schedule": True
+    }

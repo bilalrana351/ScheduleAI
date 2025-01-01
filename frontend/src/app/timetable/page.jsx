@@ -9,6 +9,31 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { generateSchedule } from "@/services/api";
 
+// Utility function to combine contiguous tasks
+const combineContiguousTasks = (tasks) => {
+  if (!tasks || tasks.length === 0) return [];
+  
+  const combinedTasks = [];
+  let currentTask = { ...tasks[0] };
+  
+  for (let i = 1; i < tasks.length; i++) {
+    const task = tasks[i];
+    if (task.task === currentTask.task && 
+        task.start === currentTask.end) {
+      // Update end time if tasks are contiguous and same
+      currentTask.end = task.end;
+    } else {
+      // Add the current combined task and start a new one
+      combinedTasks.push(currentTask);
+      currentTask = { ...task };
+    }
+  }
+  // Add the last task
+  combinedTasks.push(currentTask);
+  
+  return combinedTasks;
+};
+
 export default function TimetablePage() {
   const schedule = useScheduleStore((state) => state.schedule);
   const setSchedule = useScheduleStore((state) => state.setSchedule);
@@ -159,11 +184,30 @@ export default function TimetablePage() {
         <div className="text-center py-4">Generating new schedule...</div>
       ) : (
         <div className="grid gap-6">
+          {/* Day Schedule Info */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Day Schedule</h2>
+            <Card className="p-4 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-center">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Wake Time:</span>
+                    <span className="text-gray-600">{scheduleData.wakeTime}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Sleep Time:</span>
+                    <span className="text-gray-600">{scheduleData.sleepTime}</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
           {/* Obligations Section */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Fixed Obligations</h2>
             <div className="grid gap-3">
-              {schedule.obligations?.map((item, index) => (
+              {combineContiguousTasks(schedule.obligations)?.map((item, index) => (
                 <Card key={index} className="p-4 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-center">
                     <div>
@@ -182,7 +226,7 @@ export default function TimetablePage() {
           <div>
             <h2 className="text-xl font-semibold mb-4">Scheduled Tasks</h2>
             <div className="grid gap-3">
-              {schedule.schedule?.map((item, index) => (
+              {combineContiguousTasks(schedule.schedule)?.map((item, index) => (
                 <Card key={index} className="p-4 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-center">
                     <div>

@@ -132,23 +132,17 @@ def schedule(algo):
             else:
                 return jsonify({'error': f'Invalid algorithm: {algo}'}), 400
 
-        preference_respected = False
-
-        if result:        
-            preference_respected = result['preference_respected']
 
         interval_scheduler_used = False
             
-        if result is None:
+        if result['found_schedule'] is False:
             # If we couldn't find a schedule, try to use interval scheduler
             result = interval_schedule(wake_up, sleep, split_obligations, tasks)
-            preference_respected = result['preference_respected']
             interval_scheduler_used = True
         
-        if result is not None:
+        if result['found_schedule'] is False:
             if len(result['tasks']) != len(tasks):
                 result = interval_schedule(wake_up, sleep, split_obligations, tasks)
-                preference_respected = result['preference_respected']
                 interval_scheduler_used = True
             
         result = result['tasks']
@@ -174,8 +168,8 @@ def schedule(algo):
                 'start': obl['start'].strftime("%H:%M"),
                 'end': obl['end'].strftime("%H:%M")
             } for obl in obligations],  # Use original obligations here, not split ones
-            'found_schedule': len(result) > 0,
-            'preference_respected': preference_respected,
+            'found_schedule': result['found_schedule'],
+            'preference_respected': result['preference_respected'],
             'alternative_scheduler_used': interval_scheduler_used
         })
         

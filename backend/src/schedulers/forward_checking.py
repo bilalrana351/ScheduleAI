@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from src.core.helpers import get_time_to_preference
+from src.core.helpers import get_time_to_preference, adjust_wakeup_and_sleep
 
 def minutes_between(start_time, end_time):
     start_dt = datetime.combine(datetime.today(), start_time)
@@ -173,14 +173,12 @@ def forward_checking_schedule(wake_up, sleep, obligations, tasks, rest_time=0):
             - 'preference_respected': Boolean indicating if preferences were respected
     """
     # Create initial timeline
-    if wake_up > sleep:
-        timeline = [{"start": wake_up, "end": sleep}]
-    else:
-        timeline = [{"start": sleep, "end": wake_up}]
+    timeline = adjust_wakeup_and_sleep(wake_up, sleep)
+
 
     # If there are no task then just add them transparently
     if len(tasks) == 0:
-        return {"tasks": [], "preference_respected": True}
+        return {"tasks": [], "preference_respected": True, "found_schedule": True}
 
     # Process obligations
     for obligation in sorted(obligations, key=lambda x: x["start"]):
@@ -216,7 +214,8 @@ def forward_checking_schedule(wake_up, sleep, obligations, tasks, rest_time=0):
     if preference_result:
         return {
             "tasks": preference_result,
-            "preference_respected": True
+            "preference_respected": True,
+            "found_schedule": True
         }
 
     # If scheduling with preferences fails, try regular forward checking
@@ -224,7 +223,12 @@ def forward_checking_schedule(wake_up, sleep, obligations, tasks, rest_time=0):
     if regular_result:
         return {
             "tasks": regular_result,
-            "preference_respected": False
+            "preference_respected": False,
+            "found_schedule": True
         }
 
-    return None
+    return {
+        "tasks": [],
+        "preference_respected": False,
+        "found_schedule": False
+    }

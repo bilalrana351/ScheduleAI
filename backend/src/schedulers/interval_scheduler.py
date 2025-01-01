@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from src.validators.scheduler import minutes_between
-from src.core.helpers import get_time_to_preference
+from src.core.helpers import get_time_to_preference, adjust_wakeup_and_sleep
 
 def get_smallest_duration(tasks):
     """Get the smallest task duration from the list of tasks."""
@@ -91,10 +91,8 @@ def interval_schedule(wake_up, sleep, obligations, tasks):
             - 'preference_respected': Boolean indicating if preferences were respected
     """
     # Create initial timeline
-    if wake_up > sleep:
-        timeline = [{"start": wake_up, "end": sleep}]
-    else:
-        timeline = [{"start": sleep, "end": wake_up}]
+    timeline = adjust_wakeup_and_sleep(wake_up, sleep)
+
     
     # Process obligations
     for obligation in sorted(obligations, key=lambda x: x["start"]):
@@ -110,13 +108,21 @@ def interval_schedule(wake_up, sleep, obligations, tasks):
     
     # If there are no task then just add them transparently
     if len(tasks) == 0:
-        return {"tasks": [], "preference_respected": True}
+        return {
+            "tasks": [],
+            "preference_respected": True,
+            "found_schedule": True
+        }
     
     # Get smallest duration for interval size
     try:
         interval_size = get_smallest_duration(tasks)
     except Exception as e:
-        return None
+        return {
+            "tasks": [],
+            "preference_respected": True,
+            "found_schedule": False
+        }
     
     # Create fixed-size intervals
     intervals = create_intervals(timeline, interval_size)
@@ -125,8 +131,9 @@ def interval_schedule(wake_up, sleep, obligations, tasks):
     # Sort tasks by preference order (morning -> afternoon -> evening -> night -> no preference)
     preference_order = {"morning": 0, "afternoon": 1, "evening": 2, "night": 3, "none": 4}
     
+    # To handle the case where the preference is not defined
     sorted_tasks = sorted(tasks, 
-                        key=lambda x: (preference_order.get(x.get("preference", "none")), -x["duration"]))
+                        key=lambda x: (preference_order.get(x.get("preference") or "none"), -x["duration"]))
     
     scheduled_tasks = []
     all_preferences_respected = True
@@ -162,11 +169,16 @@ def interval_schedule(wake_up, sleep, obligations, tasks):
                     break
         
         if not task_scheduled:
-            return None  # Couldn't schedule all tasks
+            return {
+                "tasks": [],
+                "preference_respected": all_preferences_respected,
+                "found_schedule": False
+            }
     
     return {
         "tasks": scheduled_tasks,
-        "preference_respected": all_preferences_respected
+        "preference_respected": all_preferences_respected,
+        "found_schedule": True
     }
 
 def main():
